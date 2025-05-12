@@ -1,10 +1,19 @@
 from fastapi import APIRouter
-from src.retriever import retriever
-from src.models.query import RAGRequest, RAGResponse
+from typing import List
+from src.retriever.retriever import retrieve_similar_excerpts
 
 router = APIRouter()
 
-@router.post("/similar_responses", response_model=RAGResponse)
-def get_similar_responses(request: RAGRequest):
-    results = retriever.get_similar_responses(request.question)
-    return RAGResponse(answers=results)
+from pydantic import BaseModel, Field
+
+class QueryRequest(BaseModel):
+    query: str
+    top_k: int = Field(default=5, ge=1)  # ge=1 means greater than or equal to 1
+
+class QueryResponse(BaseModel):
+    excerpts: List[str]
+
+@router.post("/query", response_model=QueryResponse)
+def query_excerpts(request: QueryRequest):
+    results = retrieve_similar_excerpts(request.query, request.top_k)
+    return QueryResponse(excerpts=results['prompt'].tolist())
